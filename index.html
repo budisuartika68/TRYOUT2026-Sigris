@@ -240,6 +240,8 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
       const initialSize = useRef({ w: window.innerWidth, h: window.innerHeight });
       const audioCtxRef = useRef(null);
 
+      useEffect(() => {
+        
       // Logger diperbaiki untuk memastikan data payload tidak ditimpa state yang kosong
         sendLog({ 
           user: student?.id, 

@@ -158,7 +158,7 @@
 
     const LOGGER_URL = "https://script.google.com/macros/s/AKfycbwc_USlrG0OMsH4hsEM-YuJhXT_CF5sy462M31FNn1xDMBiknLGX9OyMqYizGVfH0hmWg/exec";
     const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSddyhNimMTKlRxOYVmxz9Hc5kG2W3suUkx-TLdFinzYQhRL8w/viewform";
-    const LOGO_URL = `https://drive.google.com/file/d/1G_wDZMXbkNS_i7gYnbka0nu2dVd1jnYH/view?usp=sharing`;
+    const LOGO_URL = `https://drive.google.com/file/d/1G_wDZMXbkNS_i7gYnbka0nu2dVd1jnYH/view`;
     const FALLBACK_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Logo_PGRI.png/600px-Logo_PGRI.png";
     
 
@@ -473,7 +473,7 @@
                 <img src=${LOGO_URL} className="w-20 h-20 mx-auto mb-6" onError=${(e)=>e.target.src=FALLBACK_LOGO} />
                 <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">TRYOUT SIGRIS</h1>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">SMP PGRI 7 DENBASAR</p>
-                <input ref=${idInputRef} disabled=${isProcessing} placeholder="NOMOR PESERTA" className="w-full p-4 bg-slate-100 rounded-2xl text-center font-black text-lg outline-none border-2 border-transparent focus:border-indigo-500 transition-all uppercase mb-4" onKeyDown=${(e) => e.key === 'Enter' && handleLogin()} />
+                <input ref=${idInputRef} disabled=${isProcessing} placeholder="CONTOH : 003" className="w-full p-4 bg-slate-100 rounded-2xl text-center font-black text-lg outline-none border-2 border-transparent focus:border-indigo-500 transition-all uppercase mb-4" onKeyDown=${(e) => e.key === 'Enter' && handleLogin()} />
                 <button disabled=${isProcessing} onClick=${handleLogin} className="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black hover:bg-indigo-700 active:scale-95 transition-all shadow-xl shadow-indigo-200">
                   ${isProcessing ? html`<div className="loading-spinner"></div>` : 'MULAI UJIAN'}
                 </button>

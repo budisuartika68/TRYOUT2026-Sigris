@@ -349,20 +349,32 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
         setStatus('LOCKED');
 
         // Pengiriman log dengan data lokasi yang baru saja diambil
-        sendLog({ 
-          user: student?.id, 
-          event, 
-          photo, 
-          location: loc.string, 
-          latitude: loc.lat || "",
-          longitude: loc.lng || "",
-          maps_url: loc.url || "",
-          totalViolations,
-          tabSwitchCount: newTab, 
-          resizeCount: newRes,
-          penaltyApplied: penaltySeconds
-        });
-      }, [status, student, stream, capturePhoto, stats]);
+        const logExamEvent = useCallback(async (
+  event,
+  photo,
+  newTab,
+  newRes,
+  penaltySeconds
+) => {
+
+  const loc = await getCurrentLocation();
+
+  await sendLog({ 
+    user: student?.id, 
+    event, 
+    photo, 
+    location: loc.string, 
+    latitude: loc.lat,
+    longitude: loc.lng,
+    maps_url: loc.url,
+    totalViolations: stats?.totalViolations,
+    tabSwitchCount: newTab, 
+    resizeCount: newRes,
+    penaltyApplied: penaltySeconds
+  });
+
+}, [student, stats]);
+
 
       useEffect(() => {
         let camStream = null;

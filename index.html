@@ -280,24 +280,109 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
         );
       });
 
+import { useRef, useCallback, useEffect } from "react";
+export default function CameraCapture() {
+
+  const captureVideoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
+  // ===============================
+  // BUKA KAMERA (sudah dituning)
+  // ===============================
+  useEffect(() => {
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width:  { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user"
+          },
+          audio: false
+        });
+        streamRef.current = stream;
+        if (captureVideoRef.current) {
+          captureVideoRef.current.srcObject = stream;
+          await captureVideoRef.current.play();
+        }
+      } catch (err) {
+        console.error("Gagal membuka kamera:", err);
+      }
+    }
+
+    startCamera();
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  // ======================================
+  // CAPTURE FOTO – TERANG + TAJAM
+  // ======================================
+  const capturePhoto = useCallback(() => {
+    const video = captureVideoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !video.videoWidth) return null;
+    // Pakai resolusi asli kamera
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    canvas.width  = w;
+    canvas.height = h;
+   const ctx = canvas.getContext("2d");
+    // 👉 inilah kunci supaya tidak gelap
+    ctx.filter = "brightness(1.25) contrast(1.1)";
+    ctx.drawImage(video, 0, 0, w, h);
+    ctx.filter = "none";
+    // kualitas JPEG
+    const imageBase64 = canvas.toDataURL("image/jpeg", 0.95);
+    return imageBase64;
+  }, []);
+
+  // ===============================
+  // Contoh tombol capture
+  // ===============================
+  const handleCapture = () => {
+    const img = capturePhoto();
+    console.log(img); // siap dikirim ke server / Google Apps Script
+  };
+
+  return (
+    <div>
+      <video
+        ref={captureVideoRef}
+        playsInline
+        muted
+        style={{ width: "100%", maxWidth: 420, borderRadius: 8 }}
+      />
+
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+
+      <button onClick={handleCapture}>
+        Ambil Foto
+      </button>
+    </div>
+  );
+}
+
+      
       // Peningkatan resolusi dan kualitas foto
-      const capturePhoto = useCallback(() => {
-  const video = captureVideoRef.current;
-  const canvas = canvasRef.current;
+  //    const capturePhoto = useCallback(() => {
+  //const video = captureVideoRef.current;
+  //const canvas = canvasRef.current;
 
-  if (!video || !video.videoWidth) return null;
+  //if (!video || !video.videoWidth) return null;
+  //canvas.width  = video.videoWidth;
+  //canvas.height = video.videoHeight;
+  //const ctx = canvas.getContext("2d");
+//  ctx.filter = "brightness(1.2) contrast(1.1)";
+ // ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+ // ctx.filter = "none";
 
-  canvas.width  = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const ctx = canvas.getContext("2d");
-
-  ctx.filter = "brightness(1.2) contrast(1.1)";
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  ctx.filter = "none";
-
-  return canvas.toDataURL("image/jpeg", 0.95);
-}, []);
+ // return canvas.toDataURL("image/jpeg", 0.95);
+//}, []);
 
 
       const triggerLock = useCallback(async (event) => {

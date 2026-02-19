@@ -3,6 +3,6 @@
     "camera",
     "geolocation"
   ],
-  "name": "Monitoring Exam System dengan beep",
-  "description": ""
+  "name": "Sistem Monitoring Ujian PGRI",
+  "description": "Sistem monitoring dengan pelacakan lokasi dan kamera SMP PGRI 7 Denpasar."
 }

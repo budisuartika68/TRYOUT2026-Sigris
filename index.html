@@ -6,7 +6,7 @@
   <title>TRYOUT SIGRIS 2026 - SMP PGRI 7 DENBASAR</title>
 
   <!-- CSS & Icons -->
-<link rel="stylesheet" href="tailwind.css">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <style>
@@ -31,20 +31,6 @@
       z-index: 1;
     }
 
-    /* Loading state fallback */
-    #root:empty::before {
-      content: 'Memuat Aplikasi...';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #4f46e5;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-size: 12px;
-    }
-
     /* Animasi Berkedip Pelanggaran */
     @keyframes blink-danger {
       0%, 100% { background-color: rgba(220, 38, 38, 0.98); }
@@ -62,6 +48,17 @@
     }
     .animate-shake {
       animation: shake 0.2s infinite;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 4px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 10px;
     }
 
     .scale-in {
@@ -119,51 +116,38 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-
-    .penalty-bar {
-      height: 4px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 2px;
-      overflow: hidden;
-      width: 200px;
-      margin: 10px auto;
-    }
-    .penalty-progress {
-      height: 100%;
-      background: #fff;
-      transition: width 1s linear;
-    }
   </style>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body>
   <div id="root"></div>
 
   <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.3.1",
-    "react-dom": "https://esm.sh/react-dom@18.3.1",
-    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-    "htm": "https://esm.sh/htm@3.1.1"
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom": "https://esm.sh/react-dom@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+      "htm": "https://esm.sh/htm@3.1.1",
+      "@google/genai": "https://esm.sh/@google/genai@1.41.0"
+    }
   }
-}
-</script>
+  </script>
 
   <script type="module">
     import React, { useState, useEffect, useCallback, useRef } from 'react';
-    import { createRoot } from 'react-dom/client';
+    import ReactDOM from 'react-dom/client';
     import htm from 'htm';
+    import { GoogleGenAI } from "@google/genai";
 
     const html = htm.bind(React.createElement);
 
     const LOGGER_URL = "https://script.google.com/macros/s/AKfycbwc_USlrG0OMsH4hsEM-YuJhXT_CF5sy462M31FNn1xDMBiknLGX9OyMqYizGVfH0hmWg/exec";
-    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSddyhNimMTKlRxOYVmxz9Hc5kG2W3suUkx-TLdFinzYQhRL8w/viewform";
-const LOGO_URL = "./LG-SMP-PGRI-7-DPS 2.png";
-const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
-    
+    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSclBzFHH1-jgxs70xkgYE9DOwx7P0eBxQLpy7Neg4Mw_YGqog/viewform";
+    const LOGO_URL = `https://drive.google.com/uc?id=1yp39hYDHupKhigev_szDIuyoGnSoftCq`;
+    const FALLBACK_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Logo_PGRI.png/600px-Logo_PGRI.png";
 
-    const DAFTAR_ID = ["000","001","002","003","004","005","006","007","008","009","010","011","012","013","014","015","016","017","018","019","020","021","022","023","024","025","026","027","028","029","030","031","032","033","034","035","036","037","038","039","040","041","042","043","044","045","046","047","048","049","050","051","052","053","054","055","056","057","058","059","060","061","062","063","064","065","066","067","068","069","070","071","072","073","074","075","076","077","078","079","080","081","082","083","084","085","086","087","088","089","090","091","092","093","094","095","096","097","098","099","100","101","102","103","104","105","106","107","108","109","110","111","112","113","114","115","116","117","118","119","120","121","122","123","124","125","126","127","128","129","130","131","132","133","134","135","136","137","138","139","140","141","142","143","144","145","146","147","148","149","150","151","152","153","154","155","156","157","158","159","160","161","162","163","164","165","166","167","168","169","170","171","172","173","174","175","176","177","178","179","180","181","182","183","184","185","186","187","188","189","190","191","192","193","194","195","196","197","198","199","200","201","202","203","204","205","206","207","208","209","210","211","212","213","214","215","216","217","218","219","220","221","222","223","224","225","226","227","228","229","230","231","232","233","234","235","236","237","238","239","240","241","242","243","244","245","246","247","248","249","250","251","252","253","254","255","256","257","258","259","260","261","262","263","264","265","266","267","268","269","270","271","272","273","274","275","276","277","278","279","280","281","282","283","284","285","286","287","288","289","290","291","292","293","294","295","296","297","298","299","300","301","302","303","304","305","306","307","308","309","310","311","312","313","314","315","316","317","318","319","320","321","322","323","324","325","326","327","328","329","330","331","332","333","334","335","336","337","338","339","340","341","342","343","344","345","346","347","348","349","350","351","352","353","354","355","356","357","358","359","360","361","362","363","364","365","366","367","368","369","370","371","372","373","374","375","376","377","378","379","380","381","382","383","384","385","386","387","388","389","390","391","392","393","394","395","396","397","398","399","400","401","402","403","404","405","406","407","408","409","410","411","412","413","414","415","416","417","418","419","420","421","422","423","424","425","426","427","428","429","430","431","432","433","434","435","436","437","438","439","440","441","442","443","444","445","446","447","448","449","450","451","452","453","454","455","456","457","458","459","460","461","462","463","464","465","466","467","468","469","470","471","472","473","474","475","476","477","478","479","480","481","482","483","484","485","486","487","488","489","490","491","492","493","494","495","496","497","498","499","500"
-];
+    const DAFTAR_ID = ["9B-01","9B-02","9B-03","9B-04","9B-05","9B-06","9B-07","9B-08","9B-09","9B-10","9B-11","9B-12","9B-13","9B-14","9B-15","9B-16","9B-17","9B-18","9B-19","9B-20","9B-21","9B-22","9B-23","9B-24","9B-25","9B-26","9B-27","9B-28","9B-29","9B-30","9B-31","9B-32","9B-33","9B-34","9B-35","9B-36","9B-37","9B-38","9A-01","9A-02","9A-03","9A-04","9A-05","9A-06","9A-07","9A-08","9A-09","9A-10","9A-11","9A-12","9A-13","9A-14","9A-15","9A-16","9A-17","9A-18","9A-19","9A-20","9A-21","9A-22","9A-23","9A-24","9A-25","9A-26","9A-27","9A-28","9A-29","9A-30","9A-31","9A-32","9A-33","9A-34","9A-35","9A-36","9A-37","9A-38","9D-01","9D-02","9D-03","9D-04","9D-05","9D-06","9D-07","9D-08","9D-09","9D-10","9D-11","9D-12","9D-13","9D-14","9D-15","9D-16","9D-17","9D-18","9D-19","9D-20","9D-21","9D-22","9D-23","9D-24","9D-25","9D-26","9D-27","9D-28","9D-29","9D-30","9D-31","9D-32","9D-33","9D-34","9D-35","9D-36","9D-37","9D-38","9D-39"];
 
     const playSound = (url) => {
       try { new Audio(url).play().catch(()=>{}); } catch(e){}
@@ -180,7 +164,7 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
           <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
             <div className="flex items-center gap-2">
               <img src=${LOGO_URL} className="w-5 h-5" onError=${(e)=>e.target.src=FALLBACK_LOGO}/>
-              <h2 className="font-black text-indigo-400 text-[9px] uppercase tracking-widest">SISTEM MONITORING</h2>
+              <h2 className="font-black text-indigo-400 text-[9px] uppercase tracking-widest">MONITORING AI</h2>
             </div>
             <button onClick=${onToggle} className="text-slate-500 hover:text-white p-2"><i className="fa-solid fa-xmark"></i></button>
           </div>
@@ -188,19 +172,10 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <div className="bg-slate-800/30 p-4 rounded-2xl border border-slate-800/50 text-center">
               <div className="camera-circle">
-                ${stats.cameraActive ? html`<video ref=${sidebarVideoRef} autoPlay playsInline muted></video>` : html`<div className="w-full h-full flex items-center justify-center text-slate-700"><i className="fa-solid fa-camera-slash"></i></div>`}
+                ${stats.cameraActive ? html`<video ref=${sidebarVideoRef} autoPlay playsInline muted />` : html`<div className="w-full h-full flex items-center justify-center text-slate-700"><i className="fa-solid fa-camera-slash"></i></div>`}
               </div>
-              <p className="text-[9px] font-bold text-slate-500 uppercase mt-2">STATUS: ${stats.cameraActive ? 'KAMERA AKTIF' : 'KAMERA OFF'}</p>
-              
-              <div className="bg-slate-950/50 p-2 rounded-lg mt-2 border border-slate-800/50">
-                <p className="text-[7px] text-slate-400 uppercase mb-1">Koordinat (Pelanggaran Terakhir):</p>
-                <p className="text-[8px] text-indigo-400 uppercase font-mono tracking-tighter break-all">
-                  ${location?.string || 'Menunggu Aktivitas...'}
-                </p>
-                ${location?.url && html`
-                  <a href=${location.url} target="_blank" className="text-[7px] text-indigo-300 underline mt-2 block uppercase font-black tracking-widest bg-indigo-900/30 py-1 rounded">Buka Lokasi Bukti</a>
-                `}
-              </div>
+              <p className="text-[9px] font-bold text-slate-500 uppercase mt-2">STATUS: ${stats.cameraActive ? 'KAMERA AKTIF' : 'KAMERA ERROR'}</p>
+              <p className="text-[8px] text-indigo-400 mt-1 uppercase font-mono tracking-tighter">${location || 'Mencari Lokasi...'}</p>
             </div>
 
             <div className="bg-indigo-900/20 border border-indigo-500/20 p-4 rounded-xl">
@@ -216,6 +191,10 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
                  </div>
                </div>
             </div>
+
+            <div className="p-4 text-[9px] text-slate-500 italic border-t border-slate-800 mt-auto leading-relaxed">
+               AI Proctor akan mengambil foto secara otomatis setiap ada aktivitas mencurigakan.
+            </div>
           </div>
         </aside>
       `;
@@ -226,195 +205,68 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
       const [student, setStudent] = useState(null);
       const [stats, setStats] = useState({ tabSwitches: 0, resizes: 0, cameraActive: false });
       const [lockTimer, setLockTimer] = useState(0);
-      const [maxPenalty, setMaxPenalty] = useState(0);
       const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
       const [stream, setStream] = useState(null);
-      const [locationData, setLocationData] = useState(null);
+      const [location, setLocation] = useState('');
       const [isProcessing, setIsProcessing] = useState(false);
-      const [needsPassword, setNeedsPassword] = useState(false);
-      const [passwordInput, setPasswordInput] = useState('');
       
       const captureVideoRef = useRef(null);
       const canvasRef = useRef(null);
       const idInputRef = useRef(null);
       const initialSize = useRef({ w: window.innerWidth, h: window.innerHeight });
-      const audioCtxRef = useRef(null);
 
-   
+      const sendLog = async (payload) => {
+        try {
+          await fetch(LOGGER_URL, { 
+            method: "POST", 
+            mode: "no-cors", 
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ ...payload, timestamp: new Date().toISOString() }) 
+          });
+        } catch (e) {}
+      };
 
       const getCurrentLocation = () => new Promise(res => {
-        if(!navigator.geolocation) return res({ string: "GPS Tidak Didukung" });
+        if(!navigator.geolocation) return res("GPS Tidak Didukung");
         navigator.geolocation.getCurrentPosition(
-          p => {
-            const lat = p.coords.latitude.toFixed(6);
-            const lng = p.coords.longitude.toFixed(6);
-            res({
-              lat,
-              lng,
-              string: `${lat}, ${lng}`,
-              url: `https://www.google.com/maps?q=${lat},${lng}`
-            });
-          },
-          err => res({ string: "Akses Lokasi Ditolak/Error" }),
-          { timeout: 10000, enableHighAccuracy: true }
+          p => res(`${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`),
+          err => res(`Kesalahan GPS`),
+          { timeout: 4000 }
         );
       });
 
-      
-      // Peningkatan resolusi dan kualitas foto
       const capturePhoto = useCallback(() => {
-  const video = captureVideoRef.current;
-  const canvas = canvasRef.current;
+        if (!captureVideoRef.current || !stats.cameraActive) return null;
+        const canvas = canvasRef.current;
+        canvas.width = 320; canvas.height = 240;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(captureVideoRef.current, 0, 0, 320, 240);
+        return canvas.toDataURL('image/jpeg', 0.4);
+      }, [stats.cameraActive]);
 
-  if (!video || !video.videoWidth) return null;
-  canvas.width  = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext("2d");
-  ctx.filter = "brightness(1.2) contrast(1.1)";
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  ctx.filter = "none";
+      const triggerLock = useCallback(async (event) => {
+        if (status !== 'EXAM') return;
+        
+        // MENGGANTI SUARA MENJADI BEEP YANG LEBIH KERAS (Digital Warning Alert)
+        playSound('https://assets.mixkit.co/active_storage/sfx/3011/3011-preview.mp3');
+        
+        const photo = capturePhoto();
+        const newTab = stats.tabSwitches + (event === 'TAB_SWITCH' ? 1 : 0);
+        const newRes = stats.resizes + (event === 'RESIZE' ? 1 : 0);
+        
+        setStats(s => ({ ...s, tabSwitches: newTab, resizes: newRes }));
+        setLockTimer(10);
+        setStatus('LOCKED');
 
-  return canvas.toDataURL("image/jpeg", 0.95);
-}, []);
-
-
-    const triggerLock = useCallback(async (event) => {
-  if (status !== 'EXAM') return;
-
-  // hitung pelanggaran lebih dulu
-  const newTab = stats.tabSwitches + (event === 'TAB_SWITCH' ? 1 : 0);
-  const newRes = stats.resizes + (event === 'RESIZE' ? 1 : 0);
-  const totalViolations = newTab + newRes;
-
-  const penaltySeconds = 10 + (totalViolations * 5);
-
-  let loc = null;
-  let photo = null;
-
-  try {
-    const locPromise = getCurrentLocation();
-
-    // pastikan kamera tersedia
-    let tempStream = null;
-    let activeStream = stream;
-
-    if (!activeStream) {
-      activeStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720 }
-      });
-      tempStream = activeStream;
-
-      if (captureVideoRef.current) {
-        captureVideoRef.current.srcObject = activeStream;
-        await new Promise(r => setTimeout(r, 800));
-      }
-    }
-
-    photo = capturePhoto();
-    loc = await locPromise;
-    setLocationData(loc);
-
-    await sendLog({
-      user: student?.id,
-      event,
-      photo,
-      location: loc?.string || "",
-      latitude: loc?.lat || "",
-      longitude: loc?.lng || "",
-      maps_url: loc?.url || "",
-      totalViolations,
-      tabSwitchCount: newTab,
-      resizeCount: newRes,
-      penaltyApplied: penaltySeconds
-    });
-
-    if (tempStream) {
-      tempStream.getTracks().forEach(t => t.stop());
-      if (captureVideoRef.current) captureVideoRef.current.srcObject = null;
-    }
-
-  } catch (e) {
-    console.error("Gagal bukti pelanggaran:", e);
-  }
-
-  setStats(s => ({
-    ...s,
-    tabSwitches: newTab,
-    resizes: newRes
-  }));
-
-  setLockTimer(penaltySeconds);
-  setMaxPenalty(penaltySeconds);
-
-  if (totalViolations >= 5 || (totalViolations > 0 && totalViolations % 10 === 0)) {
-    setNeedsPassword(true);
-  } else {
-    setNeedsPassword(false);
-  }
-
-  setStatus('LOCKED');
-
-}, [status, stats, student, stream, capturePhoto]);
-
-       
-      useEffect(() => {
-        let camStream = null;
-        const startCamera = async () => {
-          try {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-              setStream(camStream);
-              setStats(s => ({ ...s, cameraActive: true }));
-              if (captureVideoRef.current) captureVideoRef.current.srcObject = camStream;
-            }
-          } catch (e) { 
-            console.warn("Kamera Off"); 
-          }
-        };
-
-        const stopCamera = () => {
-          if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-            setStats(s => ({ ...s, cameraActive: false }));
-            if (captureVideoRef.current) captureVideoRef.current.srcObject = null;
-          }
-        };
-
-        if (sidebarOpen && status === 'EXAM') {
-          startCamera();
-        } else {
-          stopCamera();
-        }
-
-        return () => {
-          if (camStream) camStream.getTracks().forEach(track => track.stop());
-        };
-      }, [sidebarOpen, status]);
-
-      useEffect(() => {
-        let interval;
-        if (status === 'LOCKED') {
-          if (!audioCtxRef.current) {
-            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-          }
-          const ctx = audioCtxRef.current;
-          const playBeep = () => {
-            if (ctx.state === 'suspended') ctx.resume();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1800, ctx.currentTime);
-            gain.gain.setValueAtTime(0.1, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.start(); osc.stop(ctx.currentTime + 0.15);
-          };
-          playBeep();
-          interval = setInterval(playBeep, 800);
-        }
-        return () => clearInterval(interval);
-      }, [status]);
+        sendLog({ 
+          user: student?.id, 
+          event, 
+          photo, 
+          location, 
+          tabSwitchCount: newTab, 
+          resizeCount: newRes 
+        });
+      }, [status, student, location, capturePhoto, stats]);
 
       useEffect(() => {
         if (status === 'EXAM') {
@@ -429,41 +281,50 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
         if (status === 'LOCKED' && lockTimer > 0) {
           const t = setTimeout(() => setLockTimer(l => l - 1), 1000);
           return () => clearTimeout(t);
-        } else if (status === 'LOCKED' && !needsPassword) {
+        } else if (status === 'LOCKED') {
           setStatus('EXAM');
         }
-      }, [status, lockTimer, needsPassword]);
+      }, [status, lockTimer]);
 
       const handleLogin = async () => {
         const val = idInputRef.current?.value.trim().toUpperCase();
         if (!DAFTAR_ID.includes(val)) {
-          alert("NOMOR PESERTA TIDAK TERDAFTAR!");
+          alert("MAAF, NOMOR PESERTA TIDAK TERDAFTAR!");
           return;
         }
+
         setIsProcessing(true);
+        
+        // TRANSISI INSTAN KE HALAMAN UJIAN
         setStudent({ id: val });
         setStatus('EXAM');
         initialSize.current = { w: window.innerWidth, h: window.innerHeight };
         playSound('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
-        sendLog({ user: val, event: "LOGIN" });
-        setIsProcessing(false);
-      };
 
-      const handleCheckPassword = () => {
-        if (passwordInput === '@Sigris7') {
-          setNeedsPassword(false);
-          setPasswordInput('');
-          setLockTimer(0);
-          setStatus('EXAM');
-        } else {
-          alert('PASSWORD SALAH!');
-        }
+        // PROSES PERIZINAN DI LATAR BELAKANG
+        setTimeout(async () => {
+          try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+              setStream(camStream);
+              setStats(s => ({ ...s, cameraActive: true }));
+              if (captureVideoRef.current) captureVideoRef.current.srcObject = camStream;
+            }
+          } catch (e) { 
+            console.warn("Gagal inisialisasi kamera:", e); 
+          }
+          
+          const loc = await getCurrentLocation();
+          setLocation(loc);
+          sendLog({ user: val, event: "LOGIN", location: loc });
+          setIsProcessing(false);
+        }, 300);
       };
 
       return html`
         <div className="fixed inset-0 bg-slate-950 flex overflow-hidden">
-          <video ref=${captureVideoRef} autoPlay playsInline muted className="hidden"></video>
-          <canvas ref=${canvasRef} className="hidden"></canvas>
+          <video ref=${captureVideoRef} autoPlay playsInline muted className="hidden" />
+          <canvas ref=${canvasRef} className="hidden" />
           
           ${status === 'LOGIN' && html`
             <div className="fixed inset-0 bg-slate-950 flex items-center justify-center p-6 z-[999]">
@@ -471,48 +332,82 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
                 <img src=${LOGO_URL} className="w-20 h-20 mx-auto mb-6" onError=${(e)=>e.target.src=FALLBACK_LOGO} />
                 <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">TRYOUT SIGRIS</h1>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">SMP PGRI 7 DENBASAR</p>
-                <input ref=${idInputRef} disabled=${isProcessing} placeholder="CONTOH : 003" className="w-full p-4 bg-slate-100 rounded-2xl text-center font-black text-lg outline-none border-2 border-transparent focus:border-indigo-500 transition-all uppercase mb-4" onKeyDown=${(e) => e.key === 'Enter' && handleLogin()} />
-                <button disabled=${isProcessing} onClick=${handleLogin} className="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black hover:bg-indigo-700 active:scale-95 transition-all shadow-xl shadow-indigo-200">
-                  ${isProcessing ? html`<div className="loading-spinner"></div>` : 'MULAI UJIAN'}
-                </button>
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-left mt-6">
-                  <p className="text-[9px] text-amber-700 leading-relaxed font-medium">Sistem memantau kecurangan via kamera & lokasi. Lokasi hanya dilacak saat terjadi pelanggaran.</p>
+                
+                <div className="mb-6">
+                  <input 
+                    ref=${idInputRef}
+                    disabled=${isProcessing}
+                    placeholder="NOMOR PESERTA" 
+                    className="w-full p-4 bg-slate-100 rounded-2xl text-center font-black text-lg outline-none border-2 border-transparent focus:border-indigo-500 transition-all uppercase mb-4" 
+                    onKeyDown=${(e) => e.key === 'Enter' && handleLogin()}
+                  />
+                  
+                  <button 
+                    disabled=${isProcessing}
+                    onClick=${handleLogin}
+                    className="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black hover:bg-indigo-700 active:scale-95 transition-all shadow-xl shadow-indigo-200"
+                  >
+                    ${isProcessing ? html`<div className="loading-spinner"></div>` : 'MULAI UJIAN'}
+                  </button>
                 </div>
+
+                <!-- PERINGATAN AKSES DALAM BAHASA INDONESIA -->
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-left">
+                  <div className="flex items-start gap-3">
+                    <i className="fa-solid fa-circle-exclamation text-amber-500 mt-1"></i>
+                    <div>
+                      <p className="text-[10px] font-black text-amber-800 uppercase mb-1">Permintaan Akses:</p>
+                      <p className="text-[9px] text-amber-700 leading-relaxed font-medium">
+                        Klik <b>"Izinkan / Allow"</b> pada permintaan <b>Kamera</b> dan <b>Lokasi</b> yang muncul di browser Anda untuk dapat melanjutkan ujian.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="mt-6 text-[9px] text-slate-400 font-bold uppercase">Ujian ini dipantau ketat oleh Sistem AI Proctor</p>
               </div>
             </div>
           `}
 
           ${(status === 'EXAM' || status === 'LOCKED') && html`
             <${React.Fragment}>
-              <${MonitoringSidebar} stats=${stats} stream=${stream} location=${locationData} isOpen=${sidebarOpen} onToggle=${() => setSidebarOpen(!sidebarOpen)} />
+              <${MonitoringSidebar} stats=${stats} stream=${stream} location=${location} isOpen=${sidebarOpen} onToggle=${() => setSidebarOpen(!sidebarOpen)} />
+              
               <main className="flex-1 flex flex-col h-full bg-slate-50 relative">
                 <header className="bg-white border-b border-slate-200 px-5 py-3 flex justify-between items-center z-[100]">
                    <div className="flex items-center gap-3">
                      <button onClick=${() => setSidebarOpen(true)} className=${sidebarOpen ? 'hidden' : 'p-2 text-indigo-600'}><i className="fa-solid fa-bars"></i></button>
-                     <p className="text-[11px] font-black uppercase text-slate-800 tracking-tighter">ID: ${student?.id}</p>
+                     <p className="text-[11px] font-black uppercase text-slate-800 tracking-tighter">PESERTA: ${student?.id}</p>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PENGAWASAN AKTIF</span>
                    </div>
                 </header>
+                
                 <div className="flex-1 relative bg-white">
-                  <div className="iframe-wrapper">
-                    <iframe src=${FORM_URL} allow="camera; geolocation" title="Exam Form" id="exam-iframe"></iframe>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 bg-slate-50 z-0">
+                    <div className="loading-spinner border-t-indigo-500 mb-2"></div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Memuat Soal Ujian...</p>
                   </div>
+                  
+                  <div className="iframe-wrapper">
+                    <iframe src=${FORM_URL} allow="camera; geolocation" title="Exam Form" id="exam-iframe" />
+                  </div>
+                  
                   ${status === 'LOCKED' && html`
                     <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center text-white animate-blink-danger">
-                        <div className="bg-white text-red-600 w-24 h-24 rounded-full flex items-center justify-center text-5xl mb-6 shadow-2xl animate-shake"><i className="fa-solid fa-lock"></i></div>
-                        <h2 className="text-4xl font-black uppercase tracking-tighter mb-2">TERKUNCI</h2>
-                        <div className="bg-black/40 backdrop-blur-xl px-12 py-8 rounded-[3rem] border border-white/10 text-center min-w-[320px]">
-                          ${lockTimer > 0 ? html`
-                            <${React.Fragment}>
-                              <div className="text-8xl font-mono font-black mb-2">${lockTimer}</div>
-                              <div className="penalty-bar"><div className="penalty-progress" style=${{ width: `${(lockTimer / maxPenalty) * 100}%` }}></div></div>
-                            </${React.Fragment}>
-                          ` : html`
-                            <div className="flex flex-col gap-4">
-                               <input type="password" value=${passwordInput} onInput=${(e) => setPasswordInput(e.target.value)} placeholder="PASSWORD" className="w-full bg-white/20 border border-white/30 rounded-xl p-4 text-center text-white font-black text-xl outline-none" onKeyDown=${(e) => e.key === 'Enter' && handleCheckPassword()} />
-                               <button onClick=${handleCheckPassword} className="bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl uppercase text-xs">Buka Akses</button>
-                            </div>
-                          `}
+                        <div className="bg-white text-red-600 w-24 h-24 rounded-full flex items-center justify-center text-5xl mb-6 shadow-[0_0_50px_rgba(255,255,255,0.4)] animate-shake">
+                           <i className="fa-solid fa-lock"></i>
                         </div>
+                        <h2 className="text-4xl font-black uppercase tracking-tighter mb-2">AKSES TERKUNCI</h2>
+                        <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-8">PELANGGARAN SISTEM TERDETEKSI</p>
+                        
+                        <div className="bg-black/40 backdrop-blur-xl px-12 py-8 rounded-[3rem] border border-white/10 text-center">
+                          <div className="text-8xl font-mono font-black mb-2">${lockTimer}</div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">Harap Tunggu Sebentar...</p>
+                        </div>
+                        <p className="mt-8 text-xs font-bold uppercase bg-white/10 px-4 py-2 rounded-full">Dilarang pindah tab atau mengubah ukuran jendela</p>
                     </div>
                   `}
                 </div>
@@ -523,12 +418,9 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
       `;
     };
 
-    try {
-      const root = createRoot(document.getElementById('root'));
-      root.render(React.createElement(App));
-    } catch (e) {
-      console.error('Boot error:', e);
-    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
   </script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>

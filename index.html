@@ -241,26 +241,20 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
       const audioCtxRef = useRef(null);
 
       // Logger diperbaiki untuk memastikan data payload tidak ditimpa state yang kosong
-      const sendLog = async (payload) => {
-        try {
-          const finalPayload = {
-            ...payload,
-            timestamp: new Date().toLocaleString('id-ID'),
-            latitude: payload.latitude || locationData?.lat || "",
-            longitude: payload.longitude || locationData?.lng || "",
-            maps_url: payload.maps_url || locationData?.url || ""
-          };
-
-          await fetch(LOGGER_URL, { 
-            method: "POST", 
-            mode: "no-cors", 
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify(finalPayload) 
-          });
-        } catch (e) {
-          console.error("Logger error:", e);
-        }
-      };
+        sendLog({ 
+          user: student?.id, 
+          event, 
+          photo, 
+          location: loc.string, 
+          latitude: loc.lat || "",
+          longitude: loc.lng || "",
+          maps_url: loc.url || "",
+          totalViolations,
+          tabSwitchCount: newTab, 
+          resizeCount: newRes,
+          penaltyApplied: penaltySeconds
+        });
+      }, [status, student, stream, capturePhoto, stats]);
 
       const getCurrentLocation = () => new Promise(res => {
         if(!navigator.geolocation) return res({ string: "GPS Tidak Didukung" });

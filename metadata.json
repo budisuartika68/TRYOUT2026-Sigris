@@ -1,0 +1,8 @@
+{
+  "name": "SIGRIS Proctor 2026",
+  "description": "A world-class AI-powered proctoring application for SMP PGRI 7 Denpasar exams with tab-switch detection, window resize monitoring, and an integrated AI assistant.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

@@ -1,21 +1,55 @@
-
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SIGRIS Proctor 2026 - SMP PGRI 7 Denpasar</title>
+  <title>TRYOUT SIGRIS 2026 - SMP PGRI 7 DENBASAR</title>
+
+  <!-- CSS & Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
+    /* Reset dasar */
+    html, body {
+      height: 100% !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      background-color: #020617;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    #root {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      z-index: 1;
+    }
+
+    /* Animasi Berkedip Pelanggaran */
+    @keyframes blink-danger {
+      0%, 100% { background-color: rgba(220, 38, 38, 0.98); }
+      50% { background-color: rgba(0, 0, 0, 1); }
+    }
+    .animate-blink-danger {
+      animation: blink-danger 0.3s infinite;
+    }
+
+    /* Animasi Getar Ikon */
     @keyframes shake {
       0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      75% { transform: translateX(5px); }
+      25% { transform: translateX(-10px) rotate(-5deg); }
+      75% { transform: translateX(10px) rotate(5deg); }
     }
     .animate-shake {
-      animation: shake 0.5s infinite;
+      animation: shake 0.2s infinite;
     }
+
     .scrollbar-thin::-webkit-scrollbar {
       width: 4px;
     }
@@ -23,29 +57,409 @@
       background: transparent;
     }
     .scrollbar-thin::-webkit-scrollbar-thumb {
-      background: #334155;
+      background: #475569;
       border-radius: 10px;
     }
-    body {
-      margin: 0;
-      padding: 0;
+
+    .scale-in {
+      animation: scaleIn 0.3s ease-out forwards;
+    }
+    @keyframes scaleIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    
+    .iframe-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      background: white;
+    }
+
+    iframe {
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      display: block !important;
+    }
+
+    .camera-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
       overflow: hidden;
-      background-color: #020617;
-      color: white;
+      border: 3px solid #4f46e5;
+      background: #000;
+      margin: 0 auto 0.5rem;
+      position: relative;
+    }
+    .camera-circle video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .loading-spinner {
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 3px solid #fff;
+      width: 18px;
+      height: 18px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.41.0"
-  }
-}
-</script>
 </head>
-<body class="bg-slate-950">
+<body>
   <div id="root"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom": "https://esm.sh/react-dom@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+      "htm": "https://esm.sh/htm@3.1.1",
+      "@google/genai": "https://esm.sh/@google/genai@1.41.0"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import React, { useState, useEffect, useCallback, useRef } from 'react';
+    import ReactDOM from 'react-dom/client';
+    import htm from 'htm';
+    import { GoogleGenAI } from "@google/genai";
+
+    const html = htm.bind(React.createElement);
+
+    const LOGGER_URL = "https://script.google.com/macros/s/AKfycbwc_USlrG0OMsH4hsEM-YuJhXT_CF5sy462M31FNn1xDMBiknLGX9OyMqYizGVfH0hmWg/exec";
+    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSclBzFHH1-jgxs70xkgYE9DOwx7P0eBxQLpy7Neg4Mw_YGqog/viewform";
+    const LOGO_URL = `https://drive.google.com/uc?id=1yp39hYDHupKhigev_szDIuyoGnSoftCq`;
+    const FALLBACK_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Logo_PGRI.png/600px-Logo_PGRI.png";
+
+    const DAFTAR_ID = ["9B-01","9B-02","9B-03","9B-04","9B-05","9B-06","9B-07","9B-08","9B-09","9B-10","9B-11","9B-12","9B-13","9B-14","9B-15","9B-16","9B-17","9B-18","9B-19","9B-20","9B-21","9B-22","9B-23","9B-24","9B-25","9B-26","9B-27","9B-28","9B-29","9B-30","9B-31","9B-32","9B-33","9B-34","9B-35","9B-36","9B-37","9B-38","9A-01","9A-02","9A-03","9A-04","9A-05","9A-06","9A-07","9A-08","9A-09","9A-10","9A-11","9A-12","9A-13","9A-14","9A-15","9A-16","9A-17","9A-18","9A-19","9A-20","9A-21","9A-22","9A-23","9A-24","9A-25","9A-26","9A-27","9A-28","9A-29","9A-30","9A-31","9A-32","9A-33","9A-34","9A-35","9A-36","9A-37","9A-38","9D-01","9D-02","9D-03","9D-04","9D-05","9D-06","9D-07","9D-08","9D-09","9D-10","9D-11","9D-12","9D-13","9D-14","9D-15","9D-16","9D-17","9D-18","9D-19","9D-20","9D-21","9D-22","9D-23","9D-24","9D-25","9D-26","9D-27","9D-28","9D-29","9D-30","9D-31","9D-32","9D-33","9D-34","9D-35","9D-36","9D-37","9D-38","9D-39"];
+
+    const playSound = (url) => {
+      try { new Audio(url).play().catch(()=>{}); } catch(e){}
+    };
+
+    const MonitoringSidebar = ({ stats, stream, location, isOpen, onToggle }) => {
+      const sidebarVideoRef = useRef(null);
+      useEffect(() => {
+        if (stream && sidebarVideoRef.current) sidebarVideoRef.current.srcObject = stream;
+      }, [stream, isOpen]);
+
+      return html`
+        <aside className=${`bg-slate-900 text-white h-full flex flex-col transition-all duration-300 border-r border-slate-800 shrink-0 ${isOpen ? 'w-80' : 'w-0 overflow-hidden'}`}>
+          <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+            <div className="flex items-center gap-2">
+              <img src=${LOGO_URL} className="w-5 h-5" onError=${(e)=>e.target.src=FALLBACK_LOGO}/>
+              <h2 className="font-black text-indigo-400 text-[9px] uppercase tracking-widest">MONITORING AI</h2>
+            </div>
+            <button onClick=${onToggle} className="text-slate-500 hover:text-white p-2"><i className="fa-solid fa-xmark"></i></button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="bg-slate-800/30 p-4 rounded-2xl border border-slate-800/50 text-center">
+              <div className="camera-circle">
+                ${stats.cameraActive ? html`<video ref=${sidebarVideoRef} autoPlay playsInline muted />` : html`<div className="w-full h-full flex items-center justify-center text-slate-700"><i className="fa-solid fa-camera-slash"></i></div>`}
+              </div>
+              <p className="text-[9px] font-bold text-slate-500 uppercase mt-2">STATUS: ${stats.cameraActive ? 'KAMERA AKTIF' : 'KAMERA ERROR'}</p>
+              <p className="text-[8px] text-indigo-400 mt-1 uppercase font-mono tracking-tighter">${location || 'Mencari Lokasi...'}</p>
+            </div>
+
+            <div className="bg-indigo-900/20 border border-indigo-500/20 p-4 rounded-xl">
+               <h3 className="text-[10px] font-black text-indigo-300 mb-2 uppercase">Statistik Pelanggaran</h3>
+               <div className="grid grid-cols-2 gap-2">
+                 <div className="bg-slate-950/50 p-2 rounded-lg border border-slate-800">
+                    <p className="text-[8px] text-slate-400 uppercase">Pindah Tab</p>
+                    <p className="text-xl font-black text-white">${stats.tabSwitches}</p>
+                 </div>
+                 <div className="bg-slate-950/50 p-2 rounded-lg border border-slate-800">
+                    <p className="text-[8px] text-slate-400 uppercase">Resize</p>
+                    <p className="text-xl font-black text-white">${stats.resizes}</p>
+                 </div>
+               </div>
+            </div>
+
+            <div className="p-4 text-[9px] text-slate-500 italic border-t border-slate-800 mt-auto leading-relaxed">
+               AI Proctor akan mengambil foto secara otomatis setiap ada aktivitas mencurigakan.
+            </div>
+          </div>
+        </aside>
+      `;
+    };
+
+    const App = () => {
+      const [status, setStatus] = useState('LOGIN');
+      const [student, setStudent] = useState(null);
+      const [stats, setStats] = useState({ tabSwitches: 0, resizes: 0, cameraActive: false });
+      const [lockTimer, setLockTimer] = useState(0);
+      const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
+      const [stream, setStream] = useState(null);
+      const [location, setLocation] = useState('');
+      const [isProcessing, setIsProcessing] = useState(false);
+      const [needsPassword, setNeedsPassword] = useState(false);
+      const [passwordInput, setPasswordInput] = useState('');
+      
+      const captureVideoRef = useRef(null);
+      const canvasRef = useRef(null);
+      const idInputRef = useRef(null);
+      const initialSize = useRef({ w: window.innerWidth, h: window.innerHeight });
+
+      const sendLog = async (payload) => {
+        try {
+          await fetch(LOGGER_URL, { 
+            method: "POST", 
+            mode: "no-cors", 
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ ...payload, timestamp: new Date().toISOString() }) 
+          });
+        } catch (e) {}
+      };
+
+      const getCurrentLocation = () => new Promise(res => {
+        if(!navigator.geolocation) return res("GPS Tidak Didukung");
+        navigator.geolocation.getCurrentPosition(
+          p => res(`${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`),
+          err => res(`Kesalahan GPS`),
+          { timeout: 4000 }
+        );
+      });
+
+      const capturePhoto = useCallback(() => {
+        if (!captureVideoRef.current || !stats.cameraActive) return null;
+        const canvas = canvasRef.current;
+        canvas.width = 320; canvas.height = 240;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(captureVideoRef.current, 0, 0, 320, 240);
+        return canvas.toDataURL('image/jpeg', 0.4);
+      }, [stats.cameraActive]);
+
+      const triggerLock = useCallback(async (event) => {
+        if (status !== 'EXAM') return;
+        
+        playSound('https://assets.mixkit.co/active_storage/sfx/3011/3011-preview.mp3');
+        
+        const photo = capturePhoto();
+        const newTab = stats.tabSwitches + (event === 'TAB_SWITCH' ? 1 : 0);
+        const newRes = stats.resizes + (event === 'RESIZE' ? 1 : 0);
+        
+        const totalViolations = newTab + newRes;
+        
+        setStats(s => ({ ...s, tabSwitches: newTab, resizes: newRes }));
+        setLockTimer(10);
+        
+        // Proteksi Password setiap kelipatan 10 pelanggaran
+        if (totalViolations > 0 && totalViolations % 10 === 0) {
+          setNeedsPassword(true);
+        } else {
+          setNeedsPassword(false);
+        }
+        
+        setStatus('LOCKED');
+
+        sendLog({ 
+          user: student?.id, 
+          event, 
+          photo, 
+          location, 
+          tabSwitchCount: newTab, 
+          resizeCount: newRes 
+        });
+      }, [status, student, location, capturePhoto, stats]);
+
+      useEffect(() => {
+        if (status === 'EXAM') {
+          const v = () => document.visibilityState === 'hidden' && triggerLock('TAB_SWITCH');
+          const r = () => (Math.abs(window.innerWidth - initialSize.current.w) > 50) && triggerLock('RESIZE');
+          document.addEventListener('visibilitychange', v); window.addEventListener('resize', r);
+          return () => { document.removeEventListener('visibilitychange', v); window.removeEventListener('resize', r); };
+        }
+      }, [status, triggerLock]);
+
+      useEffect(() => {
+        if (status === 'LOCKED' && lockTimer > 0) {
+          const t = setTimeout(() => setLockTimer(l => l - 1), 1000);
+          return () => clearTimeout(t);
+        } else if (status === 'LOCKED' && !needsPassword) {
+          setStatus('EXAM');
+        }
+      }, [status, lockTimer, needsPassword]);
+
+      const handleLogin = async () => {
+        const val = idInputRef.current?.value.trim().toUpperCase();
+        if (!DAFTAR_ID.includes(val)) {
+          alert("MAAF, NOMOR PESERTA TIDAK TERDAFTAR!");
+          return;
+        }
+
+        setIsProcessing(true);
+        setStudent({ id: val });
+        setStatus('EXAM');
+        initialSize.current = { w: window.innerWidth, h: window.innerHeight };
+        playSound('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
+
+        setTimeout(async () => {
+          try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+              setStream(camStream);
+              setStats(s => ({ ...s, cameraActive: true }));
+              if (captureVideoRef.current) captureVideoRef.current.srcObject = camStream;
+            }
+          } catch (e) { 
+            console.warn("Gagal inisialisasi kamera:", e); 
+          }
+          
+          const loc = await getCurrentLocation();
+          setLocation(loc);
+          sendLog({ user: val, event: "LOGIN", location: loc });
+          setIsProcessing(false);
+        }, 300);
+      };
+
+      const handleCheckPassword = () => {
+        if (passwordInput === '@Sigris7') {
+          setNeedsPassword(false);
+          setPasswordInput('');
+          setStatus('EXAM');
+        } else {
+          alert('PASSWORD PENGAWAS SALAH!');
+        }
+      };
+
+      return html`
+        <div className="fixed inset-0 bg-slate-950 flex overflow-hidden">
+          <video ref=${captureVideoRef} autoPlay playsInline muted className="hidden" />
+          <canvas ref=${canvasRef} className="hidden" />
+          
+          ${status === 'LOGIN' && html`
+            <div className="fixed inset-0 bg-slate-950 flex items-center justify-center p-6 z-[999]">
+              <div className="bg-white p-10 rounded-[2.5rem] w-full max-w-sm shadow-2xl text-center border-b-8 border-indigo-600 scale-in">
+                <img src=${LOGO_URL} className="w-20 h-20 mx-auto mb-6" onError=${(e)=>e.target.src=FALLBACK_LOGO} />
+                <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">TRYOUT SIGRIS</h1>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">SMP PGRI 7 DENBASAR</p>
+                
+                <div className="mb-6">
+                  <input 
+                    ref=${idInputRef}
+                    disabled=${isProcessing}
+                    placeholder="NOMOR PESERTA" 
+                    className="w-full p-4 bg-slate-100 rounded-2xl text-center font-black text-lg outline-none border-2 border-transparent focus:border-indigo-500 transition-all uppercase mb-4" 
+                    onKeyDown=${(e) => e.key === 'Enter' && handleLogin()}
+                  />
+                  
+                  <button 
+                    disabled=${isProcessing}
+                    onClick=${handleLogin}
+                    className="w-full bg-indigo-600 text-white p-5 rounded-2xl font-black hover:bg-indigo-700 active:scale-95 transition-all shadow-xl shadow-indigo-200"
+                  >
+                    ${isProcessing ? html`<div className="loading-spinner"></div>` : 'MULAI UJIAN'}
+                  </button>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-left">
+                  <div className="flex items-start gap-3">
+                    <i className="fa-solid fa-circle-exclamation text-amber-500 mt-1"></i>
+                    <div>
+                      <p className="text-[10px] font-black text-amber-800 uppercase mb-1">Permintaan Akses:</p>
+                      <p className="text-[9px] text-amber-700 leading-relaxed font-medium">
+                        Klik <b>"Izinkan / Allow"</b> pada permintaan <b>Kamera</b> dan <b>Lokasi</b> yang muncul di browser Anda untuk dapat melanjutkan ujian.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <p className="mt-6 text-[9px] text-slate-400 font-bold uppercase">Ujian ini dipantau ketat oleh Sistem AI Proctor</p>
+              </div>
+            </div>
+          `}
+
+          ${(status === 'EXAM' || status === 'LOCKED') && html`
+            <${React.Fragment}>
+              <${MonitoringSidebar} stats=${stats} stream=${stream} location=${location} isOpen=${sidebarOpen} onToggle=${() => setSidebarOpen(!sidebarOpen)} />
+              
+              <main className="flex-1 flex flex-col h-full bg-slate-50 relative">
+                <header className="bg-white border-b border-slate-200 px-5 py-3 flex justify-between items-center z-[100]">
+                   <div className="flex items-center gap-3">
+                     <button onClick=${() => setSidebarOpen(true)} className=${sidebarOpen ? 'hidden' : 'p-2 text-indigo-600'}><i className="fa-solid fa-bars"></i></button>
+                     <p className="text-[11px] font-black uppercase text-slate-800 tracking-tighter">PESERTA: ${student?.id}</p>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PENGAWASAN AKTIF</span>
+                   </div>
+                </header>
+                
+                <div className="flex-1 relative bg-white">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 bg-slate-50 z-0">
+                    <div className="loading-spinner border-t-indigo-500 mb-2"></div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Memuat Soal Ujian...</p>
+                  </div>
+                  
+                  <div className="iframe-wrapper">
+                    <iframe src=${FORM_URL} allow="camera; geolocation" title="Exam Form" id="exam-iframe" />
+                  </div>
+                  
+                  ${status === 'LOCKED' && html`
+                    <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center text-white animate-blink-danger">
+                        <div className="bg-white text-red-600 w-24 h-24 rounded-full flex items-center justify-center text-5xl mb-6 shadow-[0_0_50px_rgba(255,255,255,0.4)] animate-shake">
+                           <i className="fa-solid fa-lock"></i>
+                        </div>
+                        <h2 className="text-4xl font-black uppercase tracking-tighter mb-2">AKSES TERKUNCI</h2>
+                        <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-8">
+                          ${needsPassword && lockTimer === 0 ? 'MEMERLUKAN VERIFIKASI PENGAWAS' : 'PELANGGARAN SISTEM TERDETEKSI'}
+                        </p>
+                        
+                        <div className="bg-black/40 backdrop-blur-xl px-12 py-8 rounded-[3rem] border border-white/10 text-center min-w-[320px]">
+                          ${lockTimer > 0 ? html`
+                            <${React.Fragment}>
+                              <div className="text-8xl font-mono font-black mb-2">${lockTimer}</div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">Harap Tunggu Sebentar...</p>
+                            </${React.Fragment}>
+                          ` : html`
+                            <div className="flex flex-col gap-4 animate-scale-in">
+                               <p className="text-[10px] font-black uppercase text-white/60 mb-2">Masukkan Password Pengawas</p>
+                               <input 
+                                 type="password"
+                                 value=${passwordInput}
+                                 onInput=${(e) => setPasswordInput(e.target.value)}
+                                 placeholder="PASSWORD"
+                                 className="w-full bg-white/20 border border-white/30 rounded-xl p-4 text-center text-white font-black text-xl outline-none focus:bg-white/30 transition-all"
+                                 onKeyDown=${(e) => e.key === 'Enter' && handleCheckPassword()}
+                               />
+                               <button 
+                                 onClick=${handleCheckPassword}
+                                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl shadow-lg transition-all active:scale-95 uppercase text-xs"
+                               >
+                                 Buka Akses Ujian
+                               </button>
+                            </div>
+                          `}
+                        </div>
+                        <p className="mt-8 text-xs font-bold uppercase bg-white/10 px-4 py-2 rounded-full">Dilarang pindah tab atau mengubah ukuran jendela</p>
+                    </div>
+                  `}
+                </div>
+              </main>
+            </${React.Fragment}>
+          `}
+        </div>
+      `;
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
 </body>
 </html>

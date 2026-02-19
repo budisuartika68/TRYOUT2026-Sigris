@@ -199,14 +199,15 @@
               <div className="camera-circle">
                 ${stats.cameraActive ? html`<video ref=${sidebarVideoRef} autoPlay playsInline muted></video>` : html`<div className="w-full h-full flex items-center justify-center text-slate-700"><i className="fa-solid fa-camera-slash"></i></div>`}
               </div>
-              <p className="text-[9px] font-bold text-slate-500 uppercase mt-2">STATUS: ${stats.cameraActive ? 'KAMERA AKTIF' : 'KAMERA ERROR'}</p>
+              <p className="text-[9px] font-bold text-slate-500 uppercase mt-2">STATUS: ${stats.cameraActive ? 'KAMERA AKTIF' : 'KAMERA OFF'}</p>
+              
               <div className="bg-slate-950/50 p-2 rounded-lg mt-2 border border-slate-800/50">
-                <p className="text-[7px] text-slate-400 uppercase mb-1">Koordinat Terdeteksi:</p>
+                <p className="text-[7px] text-slate-400 uppercase mb-1">Koordinat (Diambil saat pelanggaran):</p>
                 <p className="text-[8px] text-indigo-400 uppercase font-mono tracking-tighter break-all">
-                  ${location?.string || 'Mencari Lokasi...'}
+                  ${location?.string || 'Menunggu Aktivitas...'}
                 </p>
                 ${location?.url && html`
-                  <a href=${location.url} target="_blank" className="text-[7px] text-indigo-300 underline mt-2 block uppercase font-black tracking-widest bg-indigo-900/30 py-1 rounded">Buka Lokasi Real-time</a>
+                  <a href=${location.url} target="_blank" className="text-[7px] text-indigo-300 underline mt-2 block uppercase font-black tracking-widest bg-indigo-900/30 py-1 rounded">Buka Lokasi Bukti</a>
                 `}
               </div>
             </div>
@@ -226,7 +227,7 @@
             </div>
 
             <div className="p-4 text-[9px] text-slate-500 italic border-t border-slate-800 mt-auto leading-relaxed">
-               Sistem proctoring akan mengambil foto secara otomatis setiap ada aktivitas mencurigakan.
+               Lokasi hanya dilacak saat terdeteksi kecurangan untuk menjaga privasi dan menghemat daya.
             </div>
           </div>
         </aside>
@@ -250,6 +251,7 @@
       const canvasRef = useRef(null);
       const idInputRef = useRef(null);
       const initialSize = useRef({ w: window.innerWidth, h: window.innerHeight });
+      const audioCtxRef = useRef(null);
 
       const sendLog = async (payload) => {
         try {
@@ -287,20 +289,45 @@
       });
 
       const capturePhoto = useCallback(() => {
-        if (!captureVideoRef.current || !stats.cameraActive) return null;
+        if (!captureVideoRef.current || !captureVideoRef.current.srcObject) return null;
         const canvas = canvasRef.current;
         canvas.width = 320; canvas.height = 240;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(captureVideoRef.current, 0, 0, 320, 240);
         return canvas.toDataURL('image/jpeg', 0.4);
-      }, [stats.cameraActive]);
+      }, []);
 
       const triggerLock = useCallback(async (event) => {
         if (status !== 'EXAM') return;
         
-        playSound('https://assets.mixkit.co/active_storage/sfx/3011/3011-preview.mp3');
+        // Pengecekan lokasi HANYA saat pelanggaran
+        const locPromise = getCurrentLocation();
         
+        // Aktifkan kamera sementara untuk foto jika belum aktif
+        let tempStream = null;
+        let activeStream = stream;
+        if (!activeStream) {
+          try {
+            activeStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            tempStream = activeStream;
+            if (captureVideoRef.current) {
+              captureVideoRef.current.srcObject = activeStream;
+              // Tunggu sejenak agar kamera stabil
+              await new Promise(r => setTimeout(r, 800));
+            }
+          } catch(e) { console.error("Gagal akses kamera bukti:", e); }
+        }
+
         const photo = capturePhoto();
+        const loc = await locPromise;
+        setLocationData(loc);
+
+        // Stop stream jika ini adalah stream sementara
+        if (tempStream) {
+          tempStream.getTracks().forEach(t => t.stop());
+          if (captureVideoRef.current) captureVideoRef.current.srcObject = null;
+        }
+
         const newTab = stats.tabSwitches + (event === 'TAB_SWITCH' ? 1 : 0);
         const newRes = stats.resizes + (event === 'RESIZE' ? 1 : 0);
         const totalViolations = newTab + newRes;
@@ -323,13 +350,87 @@
           user: student?.id, 
           event, 
           photo, 
-          location: locationData?.string || "Lokasi Tidak Tersedia", 
+          location: loc.string, 
+          latitude: loc.lat || "",
+          longitude: loc.lng || "",
+          maps_url: loc.url || "",
           totalViolations,
           tabSwitchCount: newTab, 
           resizeCount: newRes,
           penaltyApplied: penaltySeconds
         });
-      }, [status, student, locationData, capturePhoto, stats]);
+      }, [status, student, stream, capturePhoto, stats]);
+
+      // Manajemen Kamera Live View: Hanya saat toggle (sidebar dibuka)
+      useEffect(() => {
+        let camStream = null;
+        const startCamera = async () => {
+          try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+              setStream(camStream);
+              setStats(s => ({ ...s, cameraActive: true }));
+              if (captureVideoRef.current) captureVideoRef.current.srcObject = camStream;
+            }
+          } catch (e) { 
+            console.warn("Gagal inisialisasi kamera live view:", e); 
+          }
+        };
+
+        const stopCamera = () => {
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            setStream(null);
+            setStats(s => ({ ...s, cameraActive: false }));
+            if (captureVideoRef.current) captureVideoRef.current.srcObject = null;
+          }
+        };
+
+        if (sidebarOpen && status === 'EXAM') {
+          startCamera();
+        } else {
+          stopCamera();
+        }
+
+        return () => {
+          if (camStream) camStream.getTracks().forEach(track => track.stop());
+        };
+      }, [sidebarOpen, status]);
+
+      // Alarm Beep Nada Tinggi Berulang saat LOCKED
+      useEffect(() => {
+        let interval;
+        if (status === 'LOCKED') {
+          if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          const ctx = audioCtxRef.current;
+
+          const playBeep = () => {
+            if (ctx.state === 'suspended') ctx.resume();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1800, ctx.currentTime);
+            
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + 0.15);
+          };
+
+          playBeep();
+          interval = setInterval(playBeep, 800);
+        }
+        return () => {
+          if (interval) clearInterval(interval);
+        };
+      }, [status]);
 
       useEffect(() => {
         if (status === 'EXAM') {
@@ -358,36 +459,13 @@
 
         setIsProcessing(true);
         setStudent({ id: val });
-        
-        const loc = await getCurrentLocation();
-        setLocationData(loc);
-
         setStatus('EXAM');
         initialSize.current = { w: window.innerWidth, h: window.innerHeight };
         playSound('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
 
-        setTimeout(async () => {
-          try {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-              setStream(camStream);
-              setStats(s => ({ ...s, cameraActive: true }));
-              if (captureVideoRef.current) captureVideoRef.current.srcObject = camStream;
-            }
-          } catch (e) { 
-            console.warn("Gagal inisialisasi kamera:", e); 
-          }
-          
-          sendLog({ 
-            user: val, 
-            event: "LOGIN", 
-            location: loc.string,
-            latitude: loc.lat || "",
-            longitude: loc.lng || "",
-            maps_url: loc.url || ""
-          });
-          setIsProcessing(false);
-        }, 300);
+        // Log login tanpa lokasi (hanya info login)
+        sendLog({ user: val, event: "LOGIN" });
+        setIsProcessing(false);
       };
 
       const handleCheckPassword = () => {
@@ -435,15 +513,15 @@
                   <div className="flex items-start gap-3">
                     <i className="fa-solid fa-circle-exclamation text-amber-500 mt-1"></i>
                     <div>
-                      <p className="text-[10px] font-black text-amber-800 uppercase mb-1">Permintaan Akses:</p>
+                      <p className="text-[10px] font-black text-amber-800 uppercase mb-1">Info Keamanan:</p>
                       <p className="text-[9px] text-amber-700 leading-relaxed font-medium">
-                        Klik <b>"Izinkan / Allow"</b> pada kamera dan lokasi untuk validasi peserta.
+                        Sistem hanya akan mengakses kamera saat monitoring dibuka dan melacak lokasi hanya jika terdeteksi pelanggaran.
                       </p>
                     </div>
                   </div>
                 </div>
                 
-                <p className="mt-6 text-[9px] text-slate-400 font-bold uppercase tracking-wider">Sistem Monitoring Aktif</p>
+                <p className="mt-6 text-[9px] text-slate-400 font-bold uppercase tracking-wider">Integritas Ujian Terjaga</p>
               </div>
             </div>
           `}
@@ -486,7 +564,7 @@
                               <div className="penalty-bar">
                                 <div className="penalty-progress" style=${{ width: `${(lockTimer / maxPenalty) * 100}%` }}></div>
                               </div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300 mt-4">Menambah Waktu Penalti...</p>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300 mt-4">Pelanggaran Terdeteksi...</p>
                             </${React.Fragment}>
                           ` : html`
                             <div className="flex flex-col gap-4 animate-scale-in">
@@ -508,7 +586,7 @@
                             </div>
                           `}
                         </div>
-                        <p className="mt-8 text-xs font-bold uppercase bg-white/10 px-4 py-2 rounded-full">Pelanggaran Berulang Menambah Waktu Tunggu</p>
+                        <p className="mt-8 text-xs font-bold uppercase bg-white/10 px-4 py-2 rounded-full">Lokasi & Foto Telah Dikirim Ke Server</p>
                     </div>
                   `}
                 </div>

@@ -282,16 +282,23 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
 
       // Peningkatan resolusi dan kualitas foto
       const capturePhoto = useCallback(() => {
-        if (!captureVideoRef.current || !captureVideoRef.current.srcObject) return null;
-        const canvas = canvasRef.current;
-        // Resolusi ditingkatkan ke 640x480 untuk detail lebih baik
-        canvas.width = 640; 
-        canvas.height = 480;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(captureVideoRef.current, 0, 0, 640, 480);
-        // Kualitas ditingkatkan ke 0.9
-        return canvas.toDataURL('image/jpeg', 0.9);
-      }, []);
+  const video = captureVideoRef.current;
+  const canvas = canvasRef.current;
+
+  if (!video || !video.videoWidth) return null;
+
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d");
+
+  ctx.filter = "brightness(1.2) contrast(1.1)";
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.filter = "none";
+
+  return canvas.toDataURL("image/jpeg", 0.95);
+}, []);
+
 
       const triggerLock = useCallback(async (event) => {
         if (status !== 'EXAM') return;

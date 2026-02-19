@@ -130,6 +130,20 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    .penalty-bar {
+      height: 4px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 2px;
+      overflow: hidden;
+      width: 200px;
+      margin: 10px auto;
+    }
+    .penalty-progress {
+      height: 100%;
+      background: #fff;
+      transition: width 1s linear;
+    }
   </style>
 </head>
 <body>
@@ -141,8 +155,7 @@
     "react": "https://esm.sh/react@18.3.1",
     "react-dom": "https://esm.sh/react-dom@18.3.1",
     "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-    "htm": "https://esm.sh/htm@3.1.1",
-    "@google/genai": "https://esm.sh/@google/genai@^1.42.0"
+    "htm": "https://esm.sh/htm@3.1.1"
   }
 }
 </script>
@@ -187,7 +200,15 @@
                 ${stats.cameraActive ? html`<video ref=${sidebarVideoRef} autoPlay playsInline muted></video>` : html`<div className="w-full h-full flex items-center justify-center text-slate-700"><i className="fa-solid fa-camera-slash"></i></div>`}
               </div>
               <p className="text-[9px] font-bold text-slate-500 uppercase mt-2">STATUS: ${stats.cameraActive ? 'KAMERA AKTIF' : 'KAMERA ERROR'}</p>
-              <p className="text-[8px] text-indigo-400 mt-1 uppercase font-mono tracking-tighter">${location || 'Mencari Lokasi...'}</p>
+              <div className="bg-slate-950/50 p-2 rounded-lg mt-2 border border-slate-800/50">
+                <p className="text-[7px] text-slate-400 uppercase mb-1">Koordinat Terdeteksi:</p>
+                <p className="text-[8px] text-indigo-400 uppercase font-mono tracking-tighter break-all">
+                  ${location?.string || 'Mencari Lokasi...'}
+                </p>
+                ${location?.url && html`
+                  <a href=${location.url} target="_blank" className="text-[7px] text-indigo-300 underline mt-2 block uppercase font-black tracking-widest bg-indigo-900/30 py-1 rounded">Buka Lokasi Real-time</a>
+                `}
+              </div>
             </div>
 
             <div className="bg-indigo-900/20 border border-indigo-500/20 p-4 rounded-xl">
@@ -217,9 +238,10 @@
       const [student, setStudent] = useState(null);
       const [stats, setStats] = useState({ tabSwitches: 0, resizes: 0, cameraActive: false });
       const [lockTimer, setLockTimer] = useState(0);
+      const [maxPenalty, setMaxPenalty] = useState(0);
       const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
       const [stream, setStream] = useState(null);
-      const [location, setLocation] = useState('');
+      const [locationData, setLocationData] = useState(null);
       const [isProcessing, setIsProcessing] = useState(false);
       const [needsPassword, setNeedsPassword] = useState(false);
       const [passwordInput, setPasswordInput] = useState('');
@@ -235,17 +257,32 @@
             method: "POST", 
             mode: "no-cors", 
             headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ ...payload, timestamp: new Date().toISOString() }) 
+            body: JSON.stringify({ 
+              ...payload, 
+              timestamp: new Date().toLocaleString('id-ID'),
+              latitude: locationData?.lat || payload.latitude || "",
+              longitude: locationData?.lng || payload.longitude || "",
+              maps_url: locationData?.url || payload.maps_url || ""
+            }) 
           });
         } catch (e) {}
       };
 
       const getCurrentLocation = () => new Promise(res => {
-        if(!navigator.geolocation) return res("GPS Tidak Didukung");
+        if(!navigator.geolocation) return res({ string: "GPS Tidak Didukung" });
         navigator.geolocation.getCurrentPosition(
-          p => res(`${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`),
-          err => res(`Kesalahan GPS`),
-          { timeout: 4000 }
+          p => {
+            const lat = p.coords.latitude.toFixed(6);
+            const lng = p.coords.longitude.toFixed(6);
+            res({
+              lat,
+              lng,
+              string: `${lat}, ${lng}`,
+              url: `https://www.google.com/maps?q=${lat},${lng}`
+            });
+          },
+          err => res({ string: "Akses Lokasi Ditolak/Error" }),
+          { timeout: 10000, enableHighAccuracy: true }
         );
       });
 
@@ -266,13 +303,15 @@
         const photo = capturePhoto();
         const newTab = stats.tabSwitches + (event === 'TAB_SWITCH' ? 1 : 0);
         const newRes = stats.resizes + (event === 'RESIZE' ? 1 : 0);
-        
         const totalViolations = newTab + newRes;
         
-        setStats(s => ({ ...s, tabSwitches: newTab, resizes: newRes }));
-        setLockTimer(10);
+        const penaltySeconds = 10 + (totalViolations * 5);
         
-        if (totalViolations > 0 && totalViolations % 10 === 0) {
+        setStats(s => ({ ...s, tabSwitches: newTab, resizes: newRes }));
+        setLockTimer(penaltySeconds);
+        setMaxPenalty(penaltySeconds);
+        
+        if (totalViolations >= 5 || (totalViolations > 0 && totalViolations % 10 === 0)) {
           setNeedsPassword(true);
         } else {
           setNeedsPassword(false);
@@ -284,11 +323,13 @@
           user: student?.id, 
           event, 
           photo, 
-          location, 
+          location: locationData?.string || "Lokasi Tidak Tersedia", 
+          totalViolations,
           tabSwitchCount: newTab, 
-          resizeCount: newRes 
+          resizeCount: newRes,
+          penaltyApplied: penaltySeconds
         });
-      }, [status, student, location, capturePhoto, stats]);
+      }, [status, student, locationData, capturePhoto, stats]);
 
       useEffect(() => {
         if (status === 'EXAM') {
@@ -317,6 +358,10 @@
 
         setIsProcessing(true);
         setStudent({ id: val });
+        
+        const loc = await getCurrentLocation();
+        setLocationData(loc);
+
         setStatus('EXAM');
         initialSize.current = { w: window.innerWidth, h: window.innerHeight };
         playSound('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
@@ -333,9 +378,14 @@
             console.warn("Gagal inisialisasi kamera:", e); 
           }
           
-          const loc = await getCurrentLocation();
-          setLocation(loc);
-          sendLog({ user: val, event: "LOGIN", location: loc });
+          sendLog({ 
+            user: val, 
+            event: "LOGIN", 
+            location: loc.string,
+            latitude: loc.lat || "",
+            longitude: loc.lng || "",
+            maps_url: loc.url || ""
+          });
           setIsProcessing(false);
         }, 300);
       };
@@ -344,6 +394,7 @@
         if (passwordInput === '@Sigris7') {
           setNeedsPassword(false);
           setPasswordInput('');
+          setLockTimer(0);
           setStatus('EXAM');
         } else {
           alert('PASSWORD PENGAWAS SALAH!');
@@ -386,20 +437,20 @@
                     <div>
                       <p className="text-[10px] font-black text-amber-800 uppercase mb-1">Permintaan Akses:</p>
                       <p className="text-[9px] text-amber-700 leading-relaxed font-medium">
-                        Klik <b>"Izinkan / Allow"</b> pada permintaan <b>Kamera</b> dan <b>Lokasi</b> yang muncul di browser Anda untuk dapat melanjutkan ujian.
+                        Klik <b>"Izinkan / Allow"</b> pada kamera dan lokasi untuk validasi peserta.
                       </p>
                     </div>
                   </div>
                 </div>
                 
-                <p className="mt-6 text-[9px] text-slate-400 font-bold uppercase">Ujian ini dipantau ketat oleh Sistem Proctoring</p>
+                <p className="mt-6 text-[9px] text-slate-400 font-bold uppercase tracking-wider">Sistem Monitoring Aktif</p>
               </div>
             </div>
           `}
 
           ${(status === 'EXAM' || status === 'LOCKED') && html`
             <${React.Fragment}>
-              <${MonitoringSidebar} stats=${stats} stream=${stream} location=${location} isOpen=${sidebarOpen} onToggle=${() => setSidebarOpen(!sidebarOpen)} />
+              <${MonitoringSidebar} stats=${stats} stream=${stream} location=${locationData} isOpen=${sidebarOpen} onToggle=${() => setSidebarOpen(!sidebarOpen)} />
               
               <main className="flex-1 flex flex-col h-full bg-slate-50 relative">
                 <header className="bg-white border-b border-slate-200 px-5 py-3 flex justify-between items-center z-[100]">
@@ -414,11 +465,6 @@
                 </header>
                 
                 <div className="flex-1 relative bg-white">
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 bg-slate-50 z-0">
-                    <div className="loading-spinner border-t-indigo-500 mb-2"></div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">Memuat Soal Ujian...</p>
-                  </div>
-                  
                   <div className="iframe-wrapper">
                     <iframe src=${FORM_URL} allow="camera; geolocation" title="Exam Form" id="exam-iframe"></iframe>
                   </div>
@@ -429,19 +475,22 @@
                            <i className="fa-solid fa-lock"></i>
                         </div>
                         <h2 className="text-4xl font-black uppercase tracking-tighter mb-2">AKSES TERKUNCI</h2>
-                        <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-8">
-                          ${needsPassword && lockTimer === 0 ? 'MEMERLUKAN VERIFIKASI PENGAWAS' : 'PELANGGARAN SISTEM TERDETEKSI'}
-                        </p>
+                        <div className="bg-red-950/50 border border-red-500/50 px-4 py-1 rounded-full mb-8">
+                           <p className="text-[10px] font-bold uppercase tracking-widest">Total Pelanggaran: ${stats.tabSwitches + stats.resizes}</p>
+                        </div>
                         
                         <div className="bg-black/40 backdrop-blur-xl px-12 py-8 rounded-[3rem] border border-white/10 text-center min-w-[320px]">
                           ${lockTimer > 0 ? html`
                             <${React.Fragment}>
                               <div className="text-8xl font-mono font-black mb-2">${lockTimer}</div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">Harap Tunggu Sebentar...</p>
+                              <div className="penalty-bar">
+                                <div className="penalty-progress" style=${{ width: `${(lockTimer / maxPenalty) * 100}%` }}></div>
+                              </div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300 mt-4">Menambah Waktu Penalti...</p>
                             </${React.Fragment}>
                           ` : html`
                             <div className="flex flex-col gap-4 animate-scale-in">
-                               <p className="text-[10px] font-black uppercase text-white/60 mb-2">Masukkan Password Pengawas</p>
+                               <p className="text-[10px] font-black uppercase text-white/60 mb-2">Verifikasi Pengawas Dibutuhkan</p>
                                <input 
                                  type="password"
                                  value=${passwordInput}
@@ -459,7 +508,7 @@
                             </div>
                           `}
                         </div>
-                        <p className="mt-8 text-xs font-bold uppercase bg-white/10 px-4 py-2 rounded-full">Dilarang pindah tab atau mengubah ukuran jendela</p>
+                        <p className="mt-8 text-xs font-bold uppercase bg-white/10 px-4 py-2 rounded-full">Pelanggaran Berulang Menambah Waktu Tunggu</p>
                     </div>
                   `}
                 </div>
@@ -475,8 +524,6 @@
       if (container) {
         const root = createRoot(container);
         root.render(React.createElement(App));
-      } else {
-        console.error('Root element not found');
       }
     } catch (e) {
       console.error('Gagal memuat aplikasi:', e);

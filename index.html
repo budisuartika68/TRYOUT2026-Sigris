@@ -155,7 +155,7 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
         <aside className=${`bg-slate-900 text-white h-full flex flex-col transition-all duration-300 border-r border-slate-800 shrink-0 ${isOpen ? 'w-80' : 'w-0 overflow-hidden'}`}>
           <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
             <div className="flex items-center gap-2">
-              <img src={LOGO_URL} className="w-5 h-5" onError=${(e)=>e.target.src=FALLBACK_LOGO}/>
+              <img src=${LOGO_URL} className="w-5 h-5" onError=${(e)=>e.target.src=FALLBACK_LOGO}/>
               <h2 className="font-black text-indigo-400 text-[9px] uppercase tracking-widest">MONITORING AI</h2>
             </div>
             <button onClick=${onToggle} className="text-slate-500 hover:text-white p-2"><i className="fa-solid fa-xmark"></i></button>

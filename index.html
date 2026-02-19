@@ -6,7 +6,7 @@
   <title>TRYOUT SIGRIS 2026 - SMP PGRI 7 DENBASAR</title>
 
   <!-- CSS & Icons -->
- <link rel="stylesheet" href="tailwind.css">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <style>
@@ -31,34 +31,23 @@
       z-index: 1;
     }
 
-    /* Animasi Berkedip Pelanggaran */
+    /* Animasi Berkedip Pelanggaran - Lebih Agresif */
     @keyframes blink-danger {
-      0%, 100% { background-color: rgba(220, 38, 38, 0.98); }
+      0%, 100% { background-color: rgba(220, 38, 38, 1); }
       50% { background-color: rgba(0, 0, 0, 1); }
     }
     .animate-blink-danger {
-      animation: blink-danger 0.3s infinite;
+      animation: blink-danger 0.2s infinite;
     }
 
     /* Animasi Getar Ikon */
     @keyframes shake {
       0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-10px) rotate(-5deg); }
-      75% { transform: translateX(10px) rotate(5deg); }
+      25% { transform: translateX(-15px) rotate(-10deg); }
+      75% { transform: translateX(15px) rotate(10deg); }
     }
     .animate-shake {
-      animation: shake 0.2s infinite;
-    }
-
-    .scrollbar-thin::-webkit-scrollbar {
-      width: 4px;
-    }
-    .scrollbar-thin::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .scrollbar-thin::-webkit-scrollbar-thumb {
-      background: #475569;
-      border-radius: 10px;
+      animation: shake 0.15s infinite;
     }
 
     .scale-in {
@@ -117,7 +106,6 @@
       100% { transform: rotate(360deg); }
     }
   </style>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
   <div id="root"></div>
@@ -138,7 +126,6 @@
     import React, { useState, useEffect, useCallback, useRef } from 'react';
     import ReactDOM from 'react-dom/client';
     import htm from 'htm';
-    import { GoogleGenAI } from "@google/genai";
 
     const html = htm.bind(React.createElement);
 
@@ -150,7 +137,11 @@
     const DAFTAR_ID = ["9B-01","9B-02","9B-03","9B-04","9B-05","9B-06","9B-07","9B-08","9B-09","9B-10","9B-11","9B-12","9B-13","9B-14","9B-15","9B-16","9B-17","9B-18","9B-19","9B-20","9B-21","9B-22","9B-23","9B-24","9B-25","9B-26","9B-27","9B-28","9B-29","9B-30","9B-31","9B-32","9B-33","9B-34","9B-35","9B-36","9B-37","9B-38","9A-01","9A-02","9A-03","9A-04","9A-05","9A-06","9A-07","9A-08","9A-09","9A-10","9A-11","9A-12","9A-13","9A-14","9A-15","9A-16","9A-17","9A-18","9A-19","9A-20","9A-21","9A-22","9A-23","9A-24","9A-25","9A-26","9A-27","9A-28","9A-29","9A-30","9A-31","9A-32","9A-33","9A-34","9A-35","9A-36","9A-37","9A-38","9D-01","9D-02","9D-03","9D-04","9D-05","9D-06","9D-07","9D-08","9D-09","9D-10","9D-11","9D-12","9D-13","9D-14","9D-15","9D-16","9D-17","9D-18","9D-19","9D-20","9D-21","9D-22","9D-23","9D-24","9D-25","9D-26","9D-27","9D-28","9D-29","9D-30","9D-31","9D-32","9D-33","9D-34","9D-35","9D-36","9D-37","9D-38","9D-39"];
 
     const playSound = (url) => {
-      try { new Audio(url).play().catch(()=>{}); } catch(e){}
+      try { 
+        const audio = new Audio(url);
+        audio.volume = 1.0; // Volume Maksimal
+        audio.play().catch(()=>{}); 
+      } catch(e){}
     };
 
     const MonitoringSidebar = ({ stats, stream, location, isOpen, onToggle }) => {
@@ -191,10 +182,6 @@
                  </div>
                </div>
             </div>
-
-            <div className="p-4 text-[9px] text-slate-500 italic border-t border-slate-800 mt-auto leading-relaxed">
-               AI Proctor akan mengambil foto secara otomatis setiap ada aktivitas mencurigakan.
-            </div>
           </div>
         </aside>
       `;
@@ -209,6 +196,8 @@
       const [stream, setStream] = useState(null);
       const [location, setLocation] = useState('');
       const [isProcessing, setIsProcessing] = useState(false);
+      const [needsPassword, setNeedsPassword] = useState(false);
+      const [passwordInput, setPasswordInput] = useState('');
       
       const captureVideoRef = useRef(null);
       const canvasRef = useRef(null);
@@ -247,15 +236,28 @@
       const triggerLock = useCallback(async (event) => {
         if (status !== 'EXAM') return;
         
-        // MENGGANTI SUARA MENJADI BEEP YANG LEBIH KERAS (Digital Warning Alert)
-        playSound('https://assets.mixkit.co/active_storage/sfx/3011/3011-preview.mp3');
+        // SUARA NYARING DAN KERAS (Emergency Alarm/Police Siren)
+        playSound('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         
         const photo = capturePhoto();
         const newTab = stats.tabSwitches + (event === 'TAB_SWITCH' ? 1 : 0);
         const newRes = stats.resizes + (event === 'RESIZE' ? 1 : 0);
         
+        const totalViolations = newTab + newRes;
+        
+        // SISTEM PENAMBAHAN WAKTU: Menambahkan 5 detik setiap kecurangan terjadi (Akumulatif)
+        const penaltySeconds = totalViolations * 5;
+        
         setStats(s => ({ ...s, tabSwitches: newTab, resizes: newRes }));
-        setLockTimer(10);
+        setLockTimer(penaltySeconds);
+        
+        // Proteksi Password jika kecurangan dilakukan lebih dari 5 Kali
+        if (totalViolations > 5) {
+          setNeedsPassword(true);
+        } else {
+          setNeedsPassword(false);
+        }
+        
         setStatus('LOCKED');
 
         sendLog({ 
@@ -281,10 +283,10 @@
         if (status === 'LOCKED' && lockTimer > 0) {
           const t = setTimeout(() => setLockTimer(l => l - 1), 1000);
           return () => clearTimeout(t);
-        } else if (status === 'LOCKED') {
+        } else if (status === 'LOCKED' && !needsPassword) {
           setStatus('EXAM');
         }
-      }, [status, lockTimer]);
+      }, [status, lockTimer, needsPassword]);
 
       const handleLogin = async () => {
         const val = idInputRef.current?.value.trim().toUpperCase();
@@ -294,14 +296,11 @@
         }
 
         setIsProcessing(true);
-        
-        // TRANSISI INSTAN KE HALAMAN UJIAN
         setStudent({ id: val });
         setStatus('EXAM');
         initialSize.current = { w: window.innerWidth, h: window.innerHeight };
         playSound('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
 
-        // PROSES PERIZINAN DI LATAR BELAKANG
         setTimeout(async () => {
           try {
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -319,6 +318,17 @@
           sendLog({ user: val, event: "LOGIN", location: loc });
           setIsProcessing(false);
         }, 300);
+      };
+
+      const handleCheckPassword = () => {
+        // Password @sigris7 (Mendukung Case Sensitive instruksi terakhir)
+        if (passwordInput === '@sigris7') {
+          setNeedsPassword(false);
+          setPasswordInput('');
+          setStatus('EXAM');
+        } else {
+          alert('PASSWORD PENGAWAS SALAH!');
+        }
       };
 
       return html`
@@ -350,21 +360,6 @@
                     ${isProcessing ? html`<div className="loading-spinner"></div>` : 'MULAI UJIAN'}
                   </button>
                 </div>
-
-                <!-- PERINGATAN AKSES DALAM BAHASA INDONESIA -->
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-left">
-                  <div className="flex items-start gap-3">
-                    <i className="fa-solid fa-circle-exclamation text-amber-500 mt-1"></i>
-                    <div>
-                      <p className="text-[10px] font-black text-amber-800 uppercase mb-1">Permintaan Akses:</p>
-                      <p className="text-[9px] text-amber-700 leading-relaxed font-medium">
-                        Klik <b>"Izinkan / Allow"</b> pada permintaan <b>Kamera</b> dan <b>Lokasi</b> yang muncul di browser Anda untuk dapat melanjutkan ujian.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <p className="mt-6 text-[9px] text-slate-400 font-bold uppercase">Ujian ini dipantau ketat oleh Sistem AI Proctor</p>
               </div>
             </div>
           `}
@@ -386,28 +381,44 @@
                 </header>
                 
                 <div className="flex-1 relative bg-white">
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 bg-slate-50 z-0">
-                    <div className="loading-spinner border-t-indigo-500 mb-2"></div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">Memuat Soal Ujian...</p>
-                  </div>
-                  
                   <div className="iframe-wrapper">
                     <iframe src=${FORM_URL} allow="camera; geolocation" title="Exam Form" id="exam-iframe" />
                   </div>
                   
                   ${status === 'LOCKED' && html`
                     <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center text-white animate-blink-danger">
-                        <div className="bg-white text-red-600 w-24 h-24 rounded-full flex items-center justify-center text-5xl mb-6 shadow-[0_0_50px_rgba(255,255,255,0.4)] animate-shake">
-                           <i className="fa-solid fa-lock"></i>
+                        <div className="bg-white text-red-600 w-24 h-24 rounded-full flex items-center justify-center text-5xl mb-6 shadow-[0_0_80px_rgba(255,255,255,0.6)] animate-shake">
+                           <i className="fa-solid fa-triangle-exclamation"></i>
                         </div>
-                        <h2 className="text-4xl font-black uppercase tracking-tighter mb-2">AKSES TERKUNCI</h2>
-                        <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-8">PELANGGARAN SISTEM TERDETEKSI</p>
+                        <h2 className="text-4xl font-black uppercase tracking-tighter mb-2">PELANGGARAN DETEKSI!</h2>
                         
-                        <div className="bg-black/40 backdrop-blur-xl px-12 py-8 rounded-[3rem] border border-white/10 text-center">
-                          <div className="text-8xl font-mono font-black mb-2">${lockTimer}</div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">Harap Tunggu Sebentar...</p>
+                        <div className="bg-black/80 backdrop-blur-xl px-12 py-8 rounded-[3rem] border-4 border-white text-center min-w-[320px] shadow-2xl">
+                          ${lockTimer > 0 ? html`
+                            <${React.Fragment}>
+                              <div className="text-8xl font-mono font-black mb-2">${lockTimer}</div>
+                              <p className="text-xs font-black uppercase tracking-widest text-red-500">PENALTI WAKTU BERTAMBAH</p>
+                              <p className="text-[9px] mt-2 opacity-60">Sistem merekam wajah dan lokasi Anda.</p>
+                            </${React.Fragment}>
+                          ` : html`
+                            <div className="flex flex-col gap-4 scale-in">
+                               <p className="text-[12px] font-black uppercase text-white mb-2">VERIFIKASI PENGAWAS DIBUTUHKAN</p>
+                               <input 
+                                 type="password"
+                                 value=${passwordInput}
+                                 onInput=${(e) => setPasswordInput(e.target.value)}
+                                 placeholder="PASSWORD"
+                                 className="w-full bg-white text-slate-900 border-none rounded-xl p-4 text-center font-black text-2xl outline-none"
+                                 onKeyDown=${(e) => e.key === 'Enter' && handleCheckPassword()}
+                               />
+                               <button 
+                                 onClick=${handleCheckPassword}
+                                 className="bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-lg transition-all active:scale-95 uppercase text-xs"
+                               >
+                                 Buka Akses Pengawas
+                               </button>
+                            </div>
+                          `}
                         </div>
-                        <p className="mt-8 text-xs font-bold uppercase bg-white/10 px-4 py-2 rounded-full">Dilarang pindah tab atau mengubah ukuran jendela</p>
                     </div>
                   `}
                 </div>
@@ -421,6 +432,5 @@
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(React.createElement(App));
   </script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>

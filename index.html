@@ -240,23 +240,7 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
       const initialSize = useRef({ w: window.innerWidth, h: window.innerHeight });
       const audioCtxRef = useRef(null);
 
-      useEffect(() => {
-        
-      // Logger diperbaiki untuk memastikan data payload tidak ditimpa state yang kosong
-        sendLog({ 
-          user: student?.id, 
-          event, 
-          photo, 
-          location: loc.string, 
-          latitude: loc.lat || "",
-          longitude: loc.lng || "",
-          maps_url: loc.url || "",
-          totalViolations,
-          tabSwitchCount: newTab, 
-          resizeCount: newRes,
-          penaltyApplied: penaltySeconds
-        });
-      }, [status, student, stream, capturePhoto, stats]);
+   
 
       const getCurrentLocation = () => new Promise(res => {
         if(!navigator.geolocation) return res({ string: "GPS Tidak Didukung" });
@@ -294,84 +278,85 @@ const FALLBACK_LOGO = "./LG-SMP-PGRI-7-DPS 2.png";
 }, []);
 
 
-      const triggerLock = useCallback(async (event) => {
-        if (status !== 'EXAM') return;
-        
-        // Pengecekan lokasi secara sinkron sebelum kirim log
-        const locPromise = getCurrentLocation();
-        
-        let tempStream = null;
-        let activeStream = stream;
-        
-        if (!activeStream) {
-          try {
-            activeStream = await navigator.mediaDevices.getUserMedia({ 
-              video: { width: 1280, height: 720 } 
-            });
-            tempStream = activeStream;
-            if (captureVideoRef.current) {
-              captureVideoRef.current.srcObject = activeStream;
-              // Stabilisasi sensor kamera
-              await new Promise(r => setTimeout(r, 1000));
-            }
-          } catch(e) { console.error("Gagal kamera bukti:", e); }
-        }
+    const triggerLock = useCallback(async (event) => {
+  if (status !== 'EXAM') return;
 
-        const photo = capturePhoto();
-        const loc = await locPromise;
-        setLocationData(loc);
+  // hitung pelanggaran lebih dulu
+  const newTab = stats.tabSwitches + (event === 'TAB_SWITCH' ? 1 : 0);
+  const newRes = stats.resizes + (event === 'RESIZE' ? 1 : 0);
+  const totalViolations = newTab + newRes;
 
-        if (tempStream) {
-          tempStream.getTracks().forEach(t => t.stop());
-          if (captureVideoRef.current) captureVideoRef.current.srcObject = null;
-        }
+  const penaltySeconds = 10 + (totalViolations * 5);
 
-        const newTab = stats.tabSwitches + (event === 'TAB_SWITCH' ? 1 : 0);
-        const newRes = stats.resizes + (event === 'RESIZE' ? 1 : 0);
-        const totalViolations = newTab + newRes;
-        
-        const penaltySeconds = 10 + (totalViolations * 5);
-        
-        setStats(s => ({ ...s, tabSwitches: newTab, resizes: newRes }));
-        setLockTimer(penaltySeconds);
-        setMaxPenalty(penaltySeconds);
-        
-        if (totalViolations >= 5 || (totalViolations > 0 && totalViolations % 10 === 0)) {
-          setNeedsPassword(true);
-        } else {
-          setNeedsPassword(false);
-        }
-        
-        setStatus('LOCKED');
+  let loc = null;
+  let photo = null;
 
-        // Pengiriman log dengan data lokasi yang baru saja diambil
-        const logExamEvent = useCallback(async (
-  event,
-  photo,
-  newTab,
-  newRes,
-  penaltySeconds
-) => {
+  try {
+    const locPromise = getCurrentLocation();
 
-  const loc = await getCurrentLocation();
+    // pastikan kamera tersedia
+    let tempStream = null;
+    let activeStream = stream;
 
-  await sendLog({ 
-    user: student?.id, 
-    event, 
-    photo, 
-    location: loc.string, 
-    latitude: loc.lat,
-    longitude: loc.lng,
-    maps_url: loc.url,
-    totalViolations: stats?.totalViolations,
-    tabSwitchCount: newTab, 
-    resizeCount: newRes,
-    penaltyApplied: penaltySeconds
-  });
+    if (!activeStream) {
+      activeStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 1280, height: 720 }
+      });
+      tempStream = activeStream;
 
-}, [student, stats]);
+      if (captureVideoRef.current) {
+        captureVideoRef.current.srcObject = activeStream;
+        await new Promise(r => setTimeout(r, 800));
+      }
+    }
 
+    photo = capturePhoto();
+    loc = await locPromise;
+    setLocationData(loc);
 
+    await sendLog({
+      user: student?.id,
+      event,
+      photo,
+      location: loc?.string || "",
+      latitude: loc?.lat || "",
+      longitude: loc?.lng || "",
+      maps_url: loc?.url || "",
+      totalViolations,
+      tabSwitchCount: newTab,
+      resizeCount: newRes,
+      penaltyApplied: penaltySeconds
+    });
+
+    if (tempStream) {
+      tempStream.getTracks().forEach(t => t.stop());
+      if (captureVideoRef.current) captureVideoRef.current.srcObject = null;
+    }
+
+  } catch (e) {
+    console.error("Gagal bukti pelanggaran:", e);
+  }
+
+  setStats(s => ({
+    ...s,
+    tabSwitches: newTab,
+    resizes: newRes
+  }));
+
+  setLockTimer(penaltySeconds);
+  setMaxPenalty(penaltySeconds);
+
+  if (totalViolations >= 5 || (totalViolations > 0 && totalViolations % 10 === 0)) {
+    setNeedsPassword(true);
+  } else {
+    setNeedsPassword(false);
+  }
+
+  setStatus('LOCKED');
+
+}, [status, stats, student, stream, capturePhoto]);
+
+       
       useEffect(() => {
         let camStream = null;
         const startCamera = async () => {
